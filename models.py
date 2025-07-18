@@ -1,6 +1,8 @@
 from flask_sqlalchemy import SQLAlchemy
+from app import app
 
 db = SQLAlchemy()
+db.init_app(app)
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -19,3 +21,7 @@ class User(db.Model):
             'email': self.email,
             'role': self.role
         }
+    
+
+    with app.app_context():
+        db.create_all()
