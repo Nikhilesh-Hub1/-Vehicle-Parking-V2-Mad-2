@@ -1,10 +1,30 @@
 from flask_restful import Api, Resource
 from flask import Flask, render_template, request, jsonify
-from models import db, User
+from models import db, User, ParkingLot, ParkingSpot, Reservation
+from flask_jwt_extended import jwt_required,create_access_token,get_jwt_identity,verify_jwt_in_request
+from functools import wraps
+from datetime import datetime
+from app import app
+def admin_required(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        verify_jwt_in_request() 
+        current_user = User.query.get(get_jwt_identity())
+        if not current_user or current_user.role != 'admin':
+            return {"message": "Access forbidden: Admins only"}, 403
+        return fn(*args, **kwargs)
+
+    return wrapper
+
+
+
 
 class Users(Resource):
-
+    @jwt_required()
+    @admin_required
     def get(self, user_id=None):
+        current_user = User.query.get(get_jwt_identity())
+          
         if user_id:
             user = User.query.get(user_id)
             if not user:
@@ -64,7 +84,7 @@ class Authenticate(Resource):
             print(f"Error: {e}")
             return {"message": "Error occurred during authentication", "error": str(e)}, 500
     
-class register(Resource):
+class Register(Resource):
     def post(self):
         try:
             email = request.json.get('email')
@@ -84,8 +104,312 @@ class register(Resource):
         
     
 
-
+class Login(Resource):
     def put(self):
-        return jsonify({"message": "PUT Registration successful"})
-    def delete(self):
-        return jsonify({"message": "DELETE Registration successful"}) 
+        try:
+            email = request.json.get('email')
+            password = request.json.get('password')
+            user = User.query.filter_by(email=email, password=password).first()
+            if user:
+                access_token = create_access_token(identity=user.id)
+                return {"message": "Login successful", "access_token": access_token}, 200
+            else:
+                return {"message": "Invalid credentials"}, 401
+        except Exception as e:
+            print(f"Error: {e}")
+            return {"message": "Error occurred during login", "error": str(e)}, 500
+        
+        
+    
+#---------------------------------------PARKING LOT CONTROLLERS---------------------------------------
+
+class ParkingLotsAPI(Resource):
+    @jwt_required()
+    
+    def get(self, lot_id=None):
+        if lot_id:
+            lot = ParkingLot.query.get(lot_id)
+            if not lot:
+                return {"message": "Parking Lot not found"}, 404
+            return {"message": "Parking Lot fetched successfully", "lot": lot.to_dict()}, 200
+        else:
+            lots = ParkingLot.query.all()
+            return jsonify({'message': 'Parking Lots fetched successfully', 'lots': [lot.to_dict() for lot in lots]})
+    @admin_required
+    def post(self):
+        try:
+            data = request.get_json()
+            new_lot = ParkingLot(
+                prime_location_name=data['prime_location_name'],
+                price=data['price'],
+                address=data['address'],
+                pin_code=data['pin_code'],
+                number_of_spots=data['number_of_spots']
+            )
+            db.session.add(new_lot)
+            db.session.commit()
+            return {"message": "Parking Lot created successfully", "lot": new_lot.to_dict()}, 201
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            return {"message": "Error occurred during creation", "error": str(e)}, 500
+        finally:
+            db.session.close()
+
+    @admin_required
+    def put(self, lot_id):
+        try:
+            lot = ParkingLot.query.get(lot_id)
+            if not lot:
+                return {"message": "Parking Lot not found"}, 404
+
+            data = request.get_json()
+            lot.prime_location_name = data['prime_location_name']
+            lot.price = data['price']
+            lot.address = data['address']
+            lot.pin_code = data['pin_code']
+            lot.number_of_spots = data['number_of_spots']
+            db.session.commit()
+            return {"message": "Parking Lot updated successfully", "lot": lot.to_dict()}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            return {"message": "Error occurred during update", "error": str(e)}, 500
+        finally:
+            db.session.close()
+
+    @admin_required
+    def delete(self, lot_id):
+        try:
+            lot = ParkingLot.query.get(lot_id)
+            if not lot:
+                return {"message": "Parking Lot not found"}, 404
+            
+            db.session.delete(lot)
+            db.session.commit()
+            return {"message": "Parking Lot deleted successfully"}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            return {"message": "Error occurred during deletion", "error": str(e)}, 500
+        finally:
+            db.session.close()
+
+
+#---------------------------------------PARKING SPOT CONTROLLERS---------------------------------------
+
+class ParkingSpotsAPI(Resource):
+    @jwt_required()
+    def get(self, spot_id=None):
+        if spot_id:
+            spot = ParkingSpot.query.get(spot_id)
+            if not spot:
+                return {"message": "Parking Spot not found"}, 404
+            return {"message": "Parking Spot fetched successfully", "spot": spot.to_dict()}, 200
+        else:
+            spots = ParkingSpot.query.all()
+            return jsonify({'message': 'Parking Spots fetched successfully', 'spots': [spot.to_dict() for spot in spots]})
+    
+    @admin_required
+    def post(self):
+        try:
+            data = request.get_json()
+            new_spot = ParkingSpot(
+                lot_id=data['lot_id'],
+                status=data.get('status', 'A')  
+            )
+            lot = ParkingLot.query.get(data['lot_id'])
+            if not lot:
+                return {"message": "Parking Lot not found"}, 404
+            if len(lot.spots) >= lot.number_of_spots:
+                return {
+                "message": "Cannot add more spots. Lot is full",
+                "available_spots": lot.number_of_spots - len(lot.spots)
+                }, 400
+            db.session.add(new_spot)
+            db.session.commit()
+            return {"message": "Parking Spot created successfully", "spot": new_spot.to_dict()}, 201
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            return {"message": "Error occurred during creation", "error": str(e)}, 500
+        finally:
+            db.session.close()
+
+    @admin_required
+    def put(self, spot_id):
+        try:
+            spot = ParkingSpot.query.get(spot_id)
+            if not spot:
+                return {"message": "Parking Spot not found"}, 404
+
+            data = request.get_json()
+            spot.lot_id = data['lot_id']
+            spot.status = data.get('status', spot.status)  
+            db.session.commit()
+            return {"message": "Parking Spot updated successfully", "spot": spot.to_dict()}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            return {"message": "Error occurred during update", "error": str(e)}, 500
+        finally:
+            db.session.close()
+    @admin_required
+    def delete(self, spot_id):
+        try:
+            spot = ParkingSpot.query.get(spot_id)
+            if not spot:
+                return {"message": "Parking Spot not found"}, 404
+            
+            db.session.delete(spot)
+            db.session.commit()
+            return {"message": "Parking Spot deleted successfully"}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            return {"message": "Error occurred during deletion", "error": str(e)}, 500
+        finally:
+            db.session.close()
+
+#---------------------------------------RESERVATION CONTROLLERS---------------------------------------
+
+class ReservationAPI(Resource):
+    @jwt_required()
+    def get(self, reservation_id=None):
+        if reservation_id:
+            reservation = Reservation.query.get(reservation_id)
+            if not reservation:
+                return {"message": "Reservation not found"}, 404
+            return {"message": "Reservation fetched successfully", "reservation": reservation.to_dict()}, 200
+        else:
+            reservations = Reservation.query.all()
+            return jsonify({'message': 'Reservations fetched successfully', 'reservations': [reservation.to_dict() for reservation in reservations]})
+    @jwt_required()
+    def post(self):
+        try:
+            data = request.get_json()
+            user_id = get_jwt_identity()
+            user = User.query.get(user_id)
+            if not user:
+                return {"message": "User not found"}, 404
+
+            spot = ParkingSpot.query.get(data['spot_id'])
+            if not spot:
+                return {"message": "Parking Spot not found"}, 404
+
+            if spot.status != 'A':
+                return {"message": "Parking Spot is not available"}, 400
+
+            reservation = Reservation(
+                spot_id=spot.id,
+                user_id=user.id,
+                parking_timestamp=datetime.utcnow()
+            )
+
+            spot.status = 'O'
+            db.session.add(reservation)
+            db.session.commit()
+
+            return {"message": "Reservation created successfully", "reservation": reservation.to_dict()}, 201
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            return {"message": "Error occurred during reservation", "error": str(e)}, 500
+        finally:
+            db.session.close()
+    @admin_required
+    def delete(self, reservation_id):
+        try:
+            reservation = Reservation.query.get(reservation_id)
+            if not reservation:
+                return {"message": "Reservation not found"}, 404
+            
+            spot = ParkingSpot.query.get(reservation.spot_id)
+            if not spot:
+                return {"message": "Parking Spot not found"}, 404
+            
+            spot.status = 'A'  
+            db.session.delete(reservation)
+            db.session.commit()
+            return {"message": "Reservation deleted successfully"}, 200
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            return {"message": "Error occurred during deletion", "error": str(e)}, 500
+        finally:
+            db.session.close()
+
+class ReservationEndAIP(Resource):
+    @jwt_required()
+    def put(self, reservation_id):
+        try:
+            reservation = Reservation.query.get(reservation_id)
+            if not reservation:
+                return {"message": "Reservation not found"}, 404
+
+            reservation.leaving_timestamp = datetime.utcnow()
+            reservation.parking_cost = self.calculate_parking_cost(reservation)
+
+            # Mark the spot as available
+            spot = ParkingSpot.query.get(reservation.spot_id)
+            if spot:
+                spot.status = 'A'
+
+            db.session.commit()
+            return {"message": "Reservation ended successfully", "reservation": reservation.to_dict()}, 200
+
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error: {e}")
+            return {"message": "Error occurred during ending reservation", "error": str(e)}, 500
+
+        finally:
+            db.session.close()
+
+    def calculate_parking_cost(self, reservation):
+        if not reservation.leaving_timestamp:
+            return 0.0
+
+        duration_seconds = (reservation.leaving_timestamp - reservation.parking_timestamp).total_seconds()
+
+        # Round up to the next full 15 minutes (900 seconds)
+        quarter_hour_blocks = -(-duration_seconds // 900)  # Ceiling division
+        duration_hours = quarter_hour_blocks * 0.25  # 15-minute intervals
+
+        base_rate = 10.0         # First hour
+        additional_rate = 15.0   # For each additional hour
+        daily_cap = 200.0        # Max charge per day
+
+        if duration_hours <= 1:
+            cost = base_rate
+        else:
+            extra_hours = duration_hours - 1
+            cost = base_rate + (extra_hours * additional_rate)
+
+        # Apply daily cap
+        days = duration_seconds // (24 * 3600)
+        if cost > daily_cap:
+            cost = daily_cap * (days + 1)
+
+        return round(cost, 2)
+
+
+
+        
+
+#---------------------------------------API SETUP---------------------------------------
+api = Api(app)
+
+api.add_resource(Authenticate, '/api/auth')
+api.add_resource(Users, '/api/users', '/api/users/<int:user_id>')
+api.add_resource(Register, '/api/register') 
+api.add_resource(Login, '/api/login')
+
+#parking lot and spot resources
+api.add_resource(ParkingLotsAPI, '/api/parking_lots', '/api/parking_lots/<int:lot_id>')
+api.add_resource(ParkingSpotsAPI, '/api/parking_spots', '/api/parking_spots/<int:spot_id>')
+api.add_resource(ReservationAPI, '/api/reservations', '/api/reservations/<int:reservation_id>')
+api.add_resource(ReservationEndAIP, '/api/reservations/end/<int:reservation_id>')
+
+
+   
