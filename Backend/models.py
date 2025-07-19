@@ -27,7 +27,7 @@ class User(db.Model):
 class ParkingLot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     prime_location_name = db.Column(db.String(100), nullable=False)
-    price = db.Column(db.Float, nullable=False)
+    price_per_hour = db.Column(db.Float, nullable=False, default=10.0)
     address = db.Column(db.String(200), nullable=False)
     pin_code = db.Column(db.String(10), nullable=False)
     number_of_spots = db.Column(db.Integer, nullable=False)
@@ -38,7 +38,7 @@ class ParkingLot(db.Model):
         return {
             "id": self.id,
             "prime_location_name": self.prime_location_name,
-            "price": self.price,
+            "price": self.price_per_hour,
             "address": self.address,
             "pin_code": self.pin_code,
             "number_of_spots": self.number_of_spots,

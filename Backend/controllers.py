@@ -106,6 +106,7 @@ class Register(Resource):
 
 class Login(Resource):
     def put(self):
+      
         try:
             email = request.json.get('email')
             password = request.json.get('password')
@@ -276,14 +277,62 @@ class ParkingSpotsAPI(Resource):
 class ReservationAPI(Resource):
     @jwt_required()
     def get(self, reservation_id=None):
+        def enrich(reservation):
+            data = reservation.to_dict()
+
+            spot = ParkingSpot.query.get(reservation.spot_id)
+            lot = ParkingLot.query.get(spot.lot_id) if spot else None
+            rate_per_hour = lot.price_per_hour if lot else 10.0
+
+            # Use current time if reservation is still ongoing
+            end_time = reservation.leaving_timestamp or datetime.utcnow()
+
+            duration_seconds = (end_time - reservation.parking_timestamp).total_seconds()
+            duration_hours = duration_seconds / 3600
+            duration_minutes = int(duration_seconds // 60)
+
+            hours = duration_minutes // 60
+            minutes = duration_minutes % 60
+
+            human_duration = []
+            if hours:
+                human_duration.append(f"{hours} hour{'s' if hours != 1 else ''}")
+            if minutes:
+                human_duration.append(f"{minutes} minute{'s' if minutes != 1 else ''}")
+            readable = " ".join(human_duration) if human_duration else "Less than a minute"
+
+            data.update({
+                "duration_hours": round(duration_hours, 2),
+                "human_readable_duration": readable,
+                "price_per_hour": rate_per_hour,
+                "parking_cost": reservation.parking_cost,
+                "lot_name": lot.prime_location_name if lot else "Unknown Lot",
+                "lot_id": lot.id if lot else None,
+                "spot_id": spot.id if spot else None,
+                "status_message": "Reservation ended" if reservation.leaving_timestamp else "Reservation ongoing"
+            })
+
+            return data
+
         if reservation_id:
             reservation = Reservation.query.get(reservation_id)
             if not reservation:
                 return {"message": "Reservation not found"}, 404
-            return {"message": "Reservation fetched successfully", "reservation": reservation.to_dict()}, 200
+
+            return {
+                "message": "Reservation fetched successfully",
+                "reservation": enrich(reservation)
+            }, 200
+
         else:
             reservations = Reservation.query.all()
-            return jsonify({'message': 'Reservations fetched successfully', 'reservations': [reservation.to_dict() for reservation in reservations]})
+            enriched_data = [enrich(res) for res in reservations]
+            return jsonify({
+                'message': 'Reservations fetched successfully',
+                'reservations': enriched_data
+            })
+
+
     @jwt_required()
     def post(self):
         try:
@@ -346,6 +395,8 @@ class ReservationEndAIP(Resource):
             reservation = Reservation.query.get(reservation_id)
             if not reservation:
                 return {"message": "Reservation not found"}, 404
+            if reservation.leaving_timestamp:
+                return {"message": "Reservation already ended"}, 400
 
             reservation.leaving_timestamp = datetime.utcnow()
             reservation.parking_cost = self.calculate_parking_cost(reservation)
@@ -356,7 +407,17 @@ class ReservationEndAIP(Resource):
                 spot.status = 'A'
 
             db.session.commit()
-            return {"message": "Reservation ended successfully", "reservation": reservation.to_dict()}, 200
+
+            rate_per_hour = ParkingLot.query.get(spot.lot_id).price_per_hour or 10.0
+            duration_seconds = (reservation.leaving_timestamp - reservation.parking_timestamp).total_seconds()
+            duration_hours = duration_seconds / 3600
+            
+            return {
+                    "message": "Reservation ended successfully",
+                    "reservation": reservation.to_dict(),
+                    "duration_hours": round(duration_hours, 2),
+                    "price_per_hour": rate_per_hour
+                    }, 200
 
         except Exception as e:
             db.session.rollback()
@@ -370,30 +431,31 @@ class ReservationEndAIP(Resource):
         if not reservation.leaving_timestamp:
             return 0.0
 
+        # Get the parking spot
+        spot = ParkingSpot.query.get(reservation.spot_id)
+        if not spot:
+            return 0.0
+
+        # Get the parking lot that owns the spot
+        lot = ParkingLot.query.get(spot.lot_id)
+        if not lot:
+            return 0.0
+
+        rate_per_hour = lot.price_per_hour or 10.0  # fallback to 10 if not set
+
+        # Time calculations — exact duration in hours
         duration_seconds = (reservation.leaving_timestamp - reservation.parking_timestamp).total_seconds()
+        duration_hours = duration_seconds / 3600
 
-        # Round up to the next full 15 minutes (900 seconds)
-        quarter_hour_blocks = -(-duration_seconds // 900)  # Ceiling division
-        duration_hours = quarter_hour_blocks * 0.25  # 15-minute intervals
+        # Calculate cost
+        cost = duration_hours * rate_per_hour
 
-        base_rate = 10.0         # First hour
-        additional_rate = 15.0   # For each additional hour
-        daily_cap = 200.0        # Max charge per day
-
-        if duration_hours <= 1:
-            cost = base_rate
-        else:
-            extra_hours = duration_hours - 1
-            cost = base_rate + (extra_hours * additional_rate)
-
-        # Apply daily cap
-        days = duration_seconds // (24 * 3600)
-        if cost > daily_cap:
-            cost = daily_cap * (days + 1)
-
-        return round(cost, 2)
+        reservation.parking_cost = round(cost, 2)
+        db.session.commit()
+        return reservation.parking_cost
 
 
+#---------------------------------------APP SETUP---------------------------------------
 
         
 
