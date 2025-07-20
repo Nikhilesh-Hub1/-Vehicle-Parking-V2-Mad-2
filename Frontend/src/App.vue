@@ -12,6 +12,7 @@ import { RouterLink, RouterView } from 'vue-router'
           <RouterLink to="/">Home</RouterLink>
           <RouterLink to="/about">About</RouterLink>
           <RouterLink to="/in">Auth</RouterLink>
+          <a v-if="isLoggedIn" @click="logout">Logout</a>
         </nav>
         <h1>Vehicle Parking System</h1>
       </div>
@@ -20,6 +21,29 @@ import { RouterLink, RouterView } from 'vue-router'
     <RouterView />
   </div>
 </template>
+
+<script>
+export default {
+  data() {
+    return {
+      isLoggedIn: false,
+    }
+  },
+  created() {
+    this.isLoggedIn = !!localStorage.getItem('token')
+  },
+  methods: {
+    logout() {
+      if (confirm('Are you sure you want to logout?')) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('user')
+        this.$router.push({ name: 'auth' })
+        this.isLoggedIn = false
+      }
+    },
+  },
+}
+</script>
 
 <style scoped>
 header {

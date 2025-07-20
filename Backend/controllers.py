@@ -113,7 +113,8 @@ class Login(Resource):
             user = User.query.filter_by(email=email, password=password).first()
             if user:
                 access_token = create_access_token(identity=user.id)
-                return {"message": "Login successful", "access_token": access_token}, 200
+                user = User.query.get(user.id)
+                return {"message": "Login successful", "access_token": access_token, "user": user.to_dict()}, 200
             else:
                 return {"message": "Invalid credentials"}, 401
         except Exception as e:
