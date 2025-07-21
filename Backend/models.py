@@ -27,23 +27,51 @@ class User(db.Model):
 class ParkingLot(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     prime_location_name = db.Column(db.String(100), nullable=False)
-    price_per_hour = db.Column(db.Float, nullable=False, default=10.0)
+    price_per_hour = db.Column(db.Float, nullable=False, server_default='10.0')
     address = db.Column(db.String(200), nullable=False)
     pin_code = db.Column(db.String(10), nullable=False)
     number_of_spots = db.Column(db.Integer, nullable=False)
     spots = db.relationship('ParkingSpot', backref='lot', cascade='all, delete-orphan')
 
+
     def to_dict(self):
         available_spots = len([s for s in self.spots if s.status == 'A'])
+
+        # Sort spots by ID 
+        sorted_spots = sorted(self.spots, key=lambda s: s.id)
+
+        # Create 2D grid (3 columns per row for example)
+        grid = []
+        row = []
+        for i, spot in enumerate(sorted_spots):
+            row.append(spot.status)
+            if (i + 1) % 5 == 0:  # Adjust this number for different row sizes
+                grid.append(row)
+                row = []
+        if row:  # Add any remaining row
+            grid.append(row)
+
         return {
             "id": self.id,
             "prime_location_name": self.prime_location_name,
-            "price": self.price_per_hour,
+            "price_per_hour": self.price_per_hour,
             "address": self.address,
             "pin_code": self.pin_code,
             "number_of_spots": self.number_of_spots,
-            "available_spots": available_spots
+            "available_spots": available_spots,
+            "grid": grid
         }
+
+
+
+
+
+
+
+
+
+
+
 
 class ParkingSpot(db.Model):
     id = db.Column(db.Integer, primary_key=True)

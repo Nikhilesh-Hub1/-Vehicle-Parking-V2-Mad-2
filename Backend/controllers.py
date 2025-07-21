@@ -143,13 +143,17 @@ class ParkingLotsAPI(Resource):
             data = request.get_json()
             new_lot = ParkingLot(
                 prime_location_name=data['prime_location_name'],
-                price=data['price'],
+                price_per_hour=data['price'],
                 address=data['address'],
                 pin_code=data['pin_code'],
                 number_of_spots=data['number_of_spots']
             )
             db.session.add(new_lot)
             db.session.commit()
+            for _ in range(new_lot.number_of_spots):
+                spot = ParkingSpot(status='A', lot_id=new_lot.id)
+                db.session.add(spot)
+                db.session.commit()
             return {"message": "Parking Lot created successfully", "lot": new_lot.to_dict()}, 201
         except Exception as e:
             db.session.rollback()
@@ -166,19 +170,50 @@ class ParkingLotsAPI(Resource):
                 return {"message": "Parking Lot not found"}, 404
 
             data = request.get_json()
+
+            # Update lot fields
             lot.prime_location_name = data['prime_location_name']
-            lot.price = data['price']
+            lot.price_per_hour = data['price_per_hour']
             lot.address = data['address']
             lot.pin_code = data['pin_code']
-            lot.number_of_spots = data['number_of_spots']
+
+            new_spot_count = data['number_of_spots']
+            current_spots = ParkingSpot.query.filter_by(lot_id=lot_id).all()
+            current_count = len(current_spots)
+
+            if new_spot_count > current_count:
+                # Add new spots
+                for _ in range(new_spot_count - current_count):
+                    new_spot = ParkingSpot(status='A', lot_id=lot.id)
+                    db.session.add(new_spot)
+
+            elif new_spot_count < current_count:
+                # Try removing only available spots
+                removable_spots = [spot for spot in current_spots if spot.status == 'A']
+                spots_to_remove = current_count - new_spot_count
+
+                if len(removable_spots) < spots_to_remove:
+                    return {
+                        "message": "Cannot remove occupied spots. Free up spots first."
+                    }, 400
+
+                for spot in removable_spots[:spots_to_remove]:
+                    db.session.delete(spot)
+
+            # Update the spot count in the lot
+            lot.number_of_spots = new_spot_count
+
             db.session.commit()
             return {"message": "Parking Lot updated successfully", "lot": lot.to_dict()}, 200
+
         except Exception as e:
             db.session.rollback()
             print(f"Error: {e}")
             return {"message": "Error occurred during update", "error": str(e)}, 500
+
         finally:
             db.session.close()
+
 
     @admin_required
     def delete(self, lot_id):

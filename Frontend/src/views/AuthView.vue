@@ -68,8 +68,12 @@ export default {
           console.log('Login successful:', data)
           localStorage.setItem('token', data.access_token)
           localStorage.setItem('user', JSON.stringify(data.user))
+          if (data.user.role === 'admin') {
+            this.$router.push({ name: 'admin' })
+          } else {
+            this.$router.push({ name: 'user-dashboard' })
+          }
           window.location.reload()
-          this.$router.push({ name: 'home' })
         } else {
           const errorData = await response.json()
           this.message = errorData.message || 'Login failed'
@@ -80,6 +84,7 @@ export default {
         console.error('Fetch error:', error)
       }
     },
+
     async registerUser() {
       try {
         const response = await fetch('http://127.0.0.1:5000/api/register', {
@@ -98,6 +103,7 @@ export default {
           const data = await response.json()
           this.message = data.message || 'Registration successful'
           console.log('Registration successful:', data)
+          alert('Registration successful! Please log in to continue.')
 
           this.islogin = true
           this.email = ''
