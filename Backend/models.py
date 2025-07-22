@@ -44,12 +44,20 @@ class ParkingLot(db.Model):
         grid = []
         row = []
         for i, spot in enumerate(sorted_spots):
-            row.append(spot.status)
+            row.append({
+                "id": spot.id,
+                "lot_id": spot.lot_id,
+                "status": spot.status            
+            })
             if (i + 1) % 5 == 0:  # Adjust this number for different row sizes
                 grid.append(row)
                 row = []
         if row:  # Add any remaining row
             grid.append(row)
+
+
+
+
 
         return {
             "id": self.id,
@@ -109,29 +117,6 @@ class Reservation(db.Model):
             "leaving_timestamp": self.leaving_timestamp.isoformat() if self.leaving_timestamp else None,
             "parking_cost": self.parking_cost
         }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

@@ -1,18 +1,5 @@
 <template>
   <div class="container-fluid p-4">
-    <!-- Topbar -->
-    <header>
-      <div
-        class="d-flex justify-content-between align-items-center bg-light p-3 rounded mb-4 shadow-sm"
-      >
-        <div>
-          💚 Welcome, Admin | 🧑 <a href="#">Users</a> | 🔍 <a href="#">Search</a> | 📊
-          <a href="#">Summary</a> | 🚪 <a href="#">Logout</a>
-        </div>
-        <div class="text-end">🖼️ <strong>Admin Profile</strong></div>
-      </div>
-    </header>
-
     <h4 class="text-center text-primary mb-4">🚗 Parking Lots</h4>
 
     <!-- Grid of Parking Lot Cards -->
@@ -26,7 +13,12 @@
         </div>
       </div>
       <div class="col-md-4" v-for="lot in parkingLots" :key="lot.id">
-        <ParkingLot :lot="lot" @edit-lot="goToEditLot" @delete-lot="deleteLot" />
+        <ParkingLot
+          :lot="lot"
+          @edit-lot="goToEditLot"
+          @delete-lot="deleteLot"
+          @spot-updated="fetchParkingLots"
+        />
       </div>
     </div>
   </div>

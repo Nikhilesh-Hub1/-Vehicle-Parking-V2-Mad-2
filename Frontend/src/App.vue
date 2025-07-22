@@ -4,26 +4,58 @@ import { RouterLink, RouterView } from 'vue-router'
 
 <template>
   <div>
-    <header>
-      <img alt="Vue logo" class="logo" src="@/assets/logo.svg" width="50" height="50" />
-      <h1>Vehicle Parking System</h1>
+    <div class="wrapper">
+      <nav class="navbar navbar-expand-lg navbar-light" style="background-color: #e3f2fd">
+        <div class="container-fluid">
+          <!-- Logo -->
+          <RouterLink class="navbar-brand" to="/about">
+            <img
+              alt="logo"
+              src="@/assets/logo.svg"
+              width="30"
+              height="30"
+              class="d-inline-block align-top"
+            />
+            <b style="color: green">Vehicle Parking</b>
+          </RouterLink>
 
-      <div class="wrapper">
-        <nav v-if="isAdmin">
-          <RouterLink v-if="isAdmin" to="/admin">Admin Dashboard</RouterLink>
-          <RouterLink to="/about">About</RouterLink>
-          <RouterLink v-if="!isLoggedIn" to="/in">Login/Register</RouterLink>
-          <a v-if="isLoggedIn" @click="logout">Logout</a>
-        </nav>
+          <!-- Links -->
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+              <!-- Admin Links -->
+              <template v-if="isAdmin && isLoggedIn">
+                <li class="nav-item">
+                  <RouterLink class="nav-link" to="/admin">Admin Dashboard</RouterLink>
+                </li>
+                <li class="nav-item">
+                  <RouterLink class="nav-link" to="/admin/userslist">Users</RouterLink>
+                </li>
+              </template>
 
-        <nav v-else>
-          <RouterLink v-if="isLoggedIn" to="/user/dashboard">Dashboard</RouterLink>
-          <RouterLink to="/about">About</RouterLink>
-          <RouterLink v-if="!isLoggedIn" to="/in">Login/Register</RouterLink>
-          <a v-if="isLoggedIn" @click="logout">Logout</a>
-        </nav>
-      </div>
-    </header>
+              <!-- User Links -->
+              <template v-else-if="isLoggedIn">
+                <li class="nav-item">
+                  <RouterLink class="nav-link" to="/user/dashboard">Dashboard</RouterLink>
+                </li>
+              </template>
+
+              <!-- Common Links -->
+              <li class="nav-item">
+                <RouterLink class="nav-link" to="/about">About</RouterLink>
+              </li>
+
+              <li class="nav-item" v-if="!isLoggedIn">
+                <RouterLink class="nav-link" to="/in">Login/Register</RouterLink>
+              </li>
+
+              <li class="nav-item" v-if="isLoggedIn">
+                <a class="nav-link" href="#" @click.prevent="logout">Logout</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </div>
 
     <RouterView />
   </div>
@@ -57,16 +89,6 @@ export default {
 </script>
 
 <style scoped>
-header {
-  background-color: #42b983;
-  color: white;
-  padding: 1rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
 .logo {
   display: block;
   margin: 0 auto 2rem;

@@ -52,7 +52,7 @@ export default {
     async loginUser() {
       try {
         const response = await fetch('http://127.0.0.1:5000/api/login', {
-          method: 'PUT',
+          method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
@@ -68,6 +68,7 @@ export default {
           console.log('Login successful:', data)
           localStorage.setItem('token', data.access_token)
           localStorage.setItem('user', JSON.stringify(data.user))
+
           if (data.user.role === 'admin') {
             this.$router.push({ name: 'admin' })
           } else {

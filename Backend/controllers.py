@@ -3,8 +3,15 @@ from flask import Flask, render_template, request, jsonify
 from models import db, User, ParkingLot, ParkingSpot, Reservation
 from flask_jwt_extended import jwt_required,create_access_token,get_jwt_identity,verify_jwt_in_request
 from functools import wraps
-from datetime import datetime
+from datetime import datetime,timedelta
 from app import app
+
+
+
+
+
+
+
 def admin_required(fn):
     @wraps(fn)
     def wrapper(*args, **kwargs):
@@ -105,16 +112,17 @@ class Register(Resource):
     
 
 class Login(Resource):
-    def put(self):
+    def post(self):
       
         try:
             email = request.json.get('email')
             password = request.json.get('password')
             user = User.query.filter_by(email=email, password=password).first()
             if user:
-                access_token = create_access_token(identity=user.id)
+                access_token = create_access_token(identity=user.id,expires_delta=timedelta(hours=24))
                 user = User.query.get(user.id)
                 return {"message": "Login successful", "access_token": access_token, "user": user.to_dict()}, 200
+            
             else:
                 return {"message": "Invalid credentials"}, 401
         except Exception as e:

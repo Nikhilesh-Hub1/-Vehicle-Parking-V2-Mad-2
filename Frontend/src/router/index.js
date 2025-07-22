@@ -55,6 +55,11 @@ const router = createRouter({
       name: 'EditLot',
       component: () => import('../views/admin/EditLot.vue'),
     },
+    {
+      path: '/admin/userslist',
+      name: 'UsersList',
+      component: () => import('../views/admin/UsersList.vue'),
+    },
   ],
 })
 

@@ -10,3 +10,6 @@ import models
 
 
 import controllers 
+
+#pushing app to work outside app context
+app.app_context().push()
