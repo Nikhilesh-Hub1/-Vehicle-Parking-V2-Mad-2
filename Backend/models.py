@@ -106,6 +106,7 @@ class Reservation(db.Model):
     parking_timestamp = db.Column(db.DateTime, nullable=False)
     leaving_timestamp = db.Column(db.DateTime, nullable=True)
     parking_cost = db.Column(db.Float, nullable=True)
+    vehicle_number = db.Column(db.String(20))
 
 
     def to_dict(self):
@@ -115,7 +116,9 @@ class Reservation(db.Model):
             "user_id": self.user_id,
             "parking_timestamp": self.parking_timestamp.isoformat(),
             "leaving_timestamp": self.leaving_timestamp.isoformat() if self.leaving_timestamp else None,
-            "parking_cost": self.parking_cost
+            "parking_cost": self.parking_cost,
+            "vehicle_number": self.vehicle_number
+            
         }
 
 

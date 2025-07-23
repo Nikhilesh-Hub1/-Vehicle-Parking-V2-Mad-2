@@ -1,29 +1,28 @@
 <template>
   <div class="card h-100 shadow-sm border-primary border-2">
     <div class="card-header">
-      <!-- Location Title -->
       <h5 class="card-title text-primary mb-3">
         <i class="bi bi-geo-alt-fill me-2"></i> {{ lot.prime_location_name }}
       </h5>
-
-      <!-- Address -->
       <p class="mb-2 text-dark">
         <i class="bi bi-geo me-2"></i>
         <strong>Address:</strong> {{ lot.address }}, Pincode: {{ lot.pin_code }}
       </p>
-
-      <!-- Occupancy -->
       <p class="mb-2 text-muted">
         <i class="bi bi-car-front-fill me-2"></i>
         <strong>Occupancy:</strong> {{ lot.available_spots }} / {{ lot.number_of_spots }}
       </p>
-
-      <!-- Price -->
       <p class="mb-2 text-success">
         <i class="bi bi-currency-rupee me-2"></i>
         <strong>Price:</strong> ₹{{ lot.price_per_hour }} per hour
       </p>
+      <!-- Edit and Delete buttons -->
+      <div class="mt-3 d-flex justify-content-between">
+        <button class="btn btn-sm btn-warning" @click="$emit('edit-lot', lot.id)">Edit</button>
+        <button class="btn btn-sm btn-danger" @click="$emit('delete-lot', lot.id)">Delete</button>
+      </div>
     </div>
+
     <div class="card-body">
       <!-- Grid display -->
       <div
@@ -41,39 +40,46 @@
             'bg-secondary': cell.status === ' ',
             'cursor-pointer': cell.status !== ' ',
           }"
-          @click="cell.status !== ' ' && openSpotEditor(cell)"
+          @click="cell.status !== ' ' && openSpot(cell)"
         >
           {{ cell.status }}
         </span>
       </div>
 
-      <!-- Spot Edit Modal -->
+      <!-- Modal for Available Spot -->
       <div v-if="showModal" class="modal-backdrop" @click.self="closeModal">
         <div class="modal-content">
-          <h5>Edit Spot</h5>
-
+          <h5>Spot Details</h5>
           <p><strong>Lot ID:</strong> {{ selectedSpot.lot_id }}</p>
           <p><strong>Spot ID:</strong> {{ selectedSpot.id }}</p>
-
-          <p><strong>Status:</strong></p>
-
-          <select v-model="selectedSpot.status" class="form-select">
-            <option value="A">Available</option>
-            <option value="O">Occupied</option>
-          </select>
+          <p>
+            <strong>Status:</strong> {{ selectedSpot.status === 'O' ? 'Occupied' : 'Available' }}
+          </p>
           <div class="mt-3 d-flex gap-2">
-            <button class="btn btn-primary" @click="saveSpotStatus">Save</button>
             <button class="btn btn-danger" @click="deleteSpot">Delete</button>
             <button class="btn btn-secondary" @click="closeModal">Cancel</button>
           </div>
         </div>
       </div>
 
-      <!-- Edit and Delete buttons -->
-      <div class="mt-3 d-flex justify-content-between">
-        <button class="btn btn-sm btn-warning" @click="$emit('edit-lot', lot.id)">Edit</button>
+      <!-- Modal for Occupied Spot -->
+      <div v-if="spotDetailsModal" class="modal-backdrop" @click.self="closeOccupiedModal">
+        <div class="modal-content">
+          <h5>Occupied Parking Spot Details</h5>
+          <p><strong>Spot ID:</strong> {{ spotDetails.spot_id }}</p>
+          <p><strong>Reservation ID:</strong> {{ spotDetails.id }}</p>
+          <p><strong>Customer ID:</strong> {{ spotDetails.user_id }}</p>
 
-        <button class="btn btn-sm btn-danger" @click="$emit('delete-lot', lot.id)">Delete</button>
+          <p><strong>Vehicle Number:</strong> {{ spotDetails.vehicle_number }}</p>
+          <p>
+            <strong>Date/Time of Parking:</strong>
+            {{ formatDate(spotDetails.parking_timestamp) }}
+          </p>
+
+          <div class="mt-3">
+            <button class="btn btn-secondary" @click="closeOccupiedModal">Close</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -81,70 +87,58 @@
 
 <script>
 export default {
-  props: {
-    lot: {
-      type: Object,
-      required: true,
-    },
-  },
+  props: { lot: Object },
   data() {
     return {
       showModal: false,
-      selectedSpot: {
-        status: null,
-        id: null,
-        lot_id: null,
-      },
+      spotDetailsModal: false,
+      selectedSpot: { status: null, id: null, lot_id: null },
+      spotDetails: {},
     }
   },
   methods: {
-    openSpotEditor(cell) {
-      this.selectedSpot = {
-        status: cell.status,
-        id: cell.id, // spot_id
-        lot_id: cell.lot_id,
+    openSpot(cell) {
+      this.selectedSpot = { status: cell.status, id: cell.id, lot_id: cell.lot_id }
+      if (cell.status === 'O') {
+        this.viewOccupiedSpots()
+      } else {
+        this.showModal = true
       }
-
-      this.showModal = true
     },
     closeModal() {
       this.showModal = false
     },
-    saveSpotStatus() {
-      fetch(`http://127.0.0.1:5000/api/parking_spots/${this.selectedSpot.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-        body: JSON.stringify({
-          lot_id: this.selectedSpot.lot_id,
-          status: this.selectedSpot.status,
-        }),
-      })
-        .then((res) => res.json())
-        .then(() => {
-          this.showModal = false
-          this.$emit('spot-updated')
-        })
-        .catch((err) => {
-          console.error('Error saving spot', err)
-        })
+    closeOccupiedModal() {
+      this.spotDetailsModal = false
+    },
+
+    async viewOccupiedSpots() {
+      try {
+        const res = await fetch(
+          `http://127.0.0.1:5000/api/reservations/by_spot/${this.selectedSpot.id}`,
+          { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } },
+        )
+        if (!res.ok) throw new Error(await res.text())
+        this.spotDetails = await res.json()
+        this.spotDetailsModal = true
+      } catch (err) {
+        console.error('Error fetching spot details:', err)
+        alert('Could not load reservation details')
+      }
     },
 
     deleteSpot() {
-      if (!confirm('Permanently delete this parking spot?')) return
-
+      if (this.selectedSpot.status !== 'A') {
+        alert('Only available spots can be deleted.')
+        return
+      }
+      if (!confirm('Delete this parking spot?')) return
       fetch(`http://127.0.0.1:5000/api/parking_spots/${this.selectedSpot.id}`, {
         method: 'DELETE',
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
+        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
       })
         .then(async (res) => {
           if (!res.ok) throw new Error(await res.text())
-
-          // Directly update the local grid data
           this.updateLocalSpotData()
           this.showModal = false
           alert('Spot deleted successfully!')
@@ -156,18 +150,14 @@ export default {
     },
 
     updateLocalSpotData() {
-      // Find and remove the spot from the grid
       this.lot.grid.forEach((row) => {
         row.forEach((cell, index) => {
-          if (cell.id === this.selectedSpot.id) {
-            row.splice(index, 1) // Remove the spot
-
-            // Update counts
-            this.lot.number_of_spots
-            if (cell.status === 'A') this.lot.available_spots
-          }
+          if (cell.id === this.selectedSpot.id) row.splice(index, 1)
         })
       })
+    },
+    formatDate(dateStr) {
+      return new Date(dateStr).toLocaleString()
     },
   },
 }

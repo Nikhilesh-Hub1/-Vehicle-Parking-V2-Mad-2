@@ -383,6 +383,8 @@ class ReservationAPI(Resource):
             data = request.get_json()
             user_id = get_jwt_identity()
             user = User.query.get(user_id)
+           
+
             if not user:
                 return {"message": "User not found"}, 404
 
@@ -392,10 +394,15 @@ class ReservationAPI(Resource):
 
             if spot.status != 'A':
                 return {"message": "Parking Spot is not available"}, 400
+                
+            vehicle_number = data.get('vehicle_number')
+            if not vehicle_number:
+                return {"message": "Vehicle number is required"}, 400
 
             reservation = Reservation(
                 spot_id=spot.id,
                 user_id=user.id,
+                vehicle_number = vehicle_number,
                 parking_timestamp=datetime.utcnow()
             )
 
@@ -431,6 +438,17 @@ class ReservationAPI(Resource):
             return {"message": "Error occurred during deletion", "error": str(e)}, 500
         finally:
             db.session.close()
+
+
+
+class ReservationBySpotId(Resource):
+    @admin_required
+    def get(self,spot_id):
+        reservation = Reservation.query.filter_by(spot_id=spot_id, leaving_timestamp=None).first()
+        if not reservation:
+            return {"message": "No active reservation for this spot"}, 404
+        return reservation.to_dict()
+
 
 class ReservationEndAIP(Resource):
     @jwt_required()
@@ -499,6 +517,50 @@ class ReservationEndAIP(Resource):
         return reservation.parking_cost
 
 
+
+#---------------------------------------CHART JS API'S---------------------------------------
+class AdminSummary(Resource):
+    @admin_required
+    def get(self):
+        lots = ParkingLot.query.all()
+        summary = []
+        total_available = 0
+        total_occupied = 0
+        
+        for lot in lots:
+            available = len([s for s in lot.spots if s.status == 'A'])
+            occupied = len([s for s in lot.spots if s.status == 'O'])
+            total_available += available
+            total_occupied += occupied
+            
+            summary.append({
+                "lot_name": lot.prime_location_name,
+                "available": available,
+                "occupied": occupied
+            })
+        
+        return jsonify({
+            "lot_summary": summary,
+            "totals": {
+                "available": total_available,
+                "occupied": total_occupied
+            }
+        })
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #---------------------------------------APP SETUP---------------------------------------
 
         
@@ -516,6 +578,12 @@ api.add_resource(ParkingLotsAPI, '/api/parking_lots', '/api/parking_lots/<int:lo
 api.add_resource(ParkingSpotsAPI, '/api/parking_spots', '/api/parking_spots/<int:spot_id>')
 api.add_resource(ReservationAPI, '/api/reservations', '/api/reservations/<int:reservation_id>')
 api.add_resource(ReservationEndAIP, '/api/reservations/end/<int:reservation_id>')
+api.add_resource(ReservationBySpotId, '/api/reservations/by_spot/<int:spot_id>')
+
+#chart.js
+api.add_resource(AdminSummary, '/api/admin/summary')
+
+
 
 
    

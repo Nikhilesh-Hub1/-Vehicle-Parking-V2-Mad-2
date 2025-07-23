@@ -1,5 +1,15 @@
 <template>
   <div class="container-fluid p-4">
+    <!-- Search -->
+    <div class="mb-3">
+      <input
+        type="text"
+        v-model="searchQuery"
+        class="form-control"
+        placeholder="Search parking by location or pin code"
+      />
+    </div>
+
     <h4 class="text-center text-primary mb-4">🚗 Parking Lots</h4>
 
     <!-- Grid of Parking Lot Cards -->
@@ -12,7 +22,7 @@
           <button class="btn btn-outline-primary" @click="goToAddLot">➕ Add Lot</button>
         </div>
       </div>
-      <div class="col-md-4" v-for="lot in parkingLots" :key="lot.id">
+      <div class="col-md-4" v-for="lot in filteredLots" :key="lot.id">
         <ParkingLot
           :lot="lot"
           @edit-lot="goToEditLot"
@@ -32,7 +42,19 @@ export default {
   data() {
     return {
       parkingLots: [],
+      searchQuery: '',
     }
+  },
+  computed: {
+    filteredLots() {
+      const query = this.searchQuery.trim().toLowerCase()
+      if (!query) return this.parkingLots
+      return this.parkingLots.filter(
+        (lot) =>
+          lot.prime_location_name.toLowerCase().includes(query) ||
+          lot.pin_code.toString().toLowerCase().includes(query),
+      )
+    },
   },
   methods: {
     goToAddLot() {
@@ -63,6 +85,20 @@ export default {
     },
 
     async deleteLot(lotId) {
+      const lot = this.parkingLots.find((l) => l.id === lotId)
+      if (!lot) return
+
+      // Flatten the grid to get a simple array of spots
+      const allSpots = lot.grid.flat()
+
+      // Check if any spot is NOT available
+      const hasOccupied = allSpots.some((spot) => spot.status !== 'A')
+
+      if (hasOccupied) {
+        alert('Cannot delete this lot. Some spots are still occupied.')
+        return
+      }
+
       const confirmDelete = confirm('Are you sure you want to delete this lot?')
       if (!confirmDelete) return
 

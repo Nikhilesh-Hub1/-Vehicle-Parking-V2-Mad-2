@@ -30,6 +30,9 @@ import { RouterLink, RouterView } from 'vue-router'
                 <li class="nav-item">
                   <RouterLink class="nav-link" to="/admin/userslist">Users</RouterLink>
                 </li>
+                <li class="nav-item">
+                  <RouterLink class="nav-link" to="/admin/summary">Summary</RouterLink>
+                </li>
               </template>
 
               <!-- User Links -->

@@ -27,7 +27,7 @@ const router = createRouter({
     {
       path: '/in',
       name: 'auth',
-      component: () => import('../views/AuthView.vue'),
+      component: () => import('../AuthView.vue'),
     },
     //-----------------------admin routes-----------------------
 
@@ -59,6 +59,13 @@ const router = createRouter({
       path: '/admin/userslist',
       name: 'UsersList',
       component: () => import('../views/admin/UsersList.vue'),
+    },
+
+    {
+      path: '/admin/summary',
+      name: 'summary',
+      component: () => import('../views/admin/Summary.vue'),
+      meta: { requiresAuth: true, adminOnly: true },
     },
   ],
 })
