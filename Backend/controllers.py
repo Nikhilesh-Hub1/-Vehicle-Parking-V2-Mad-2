@@ -5,6 +5,7 @@ from flask_jwt_extended import jwt_required,create_access_token,get_jwt_identity
 from functools import wraps
 from datetime import datetime,timedelta
 from app import app
+from sqlalchemy import func
 
 
 
@@ -521,43 +522,58 @@ class ReservationEndAIP(Resource):
 #---------------------------------------CHART JS API'S---------------------------------------
 class AdminSummary(Resource):
     @admin_required
+ 
     def get(self):
+        # Totals
+        total_lots = ParkingLot.query.count()
+        total_users = User.query.count()
+        total_spots = ParkingSpot.query.count()
+        occupied_spots = ParkingSpot.query.filter_by(status='O').count()
+        available_spots = total_spots - occupied_spots
+
+        # Lot-wise summary
+        lot_summary = []
         lots = ParkingLot.query.all()
-        summary = []
-        total_available = 0
-        total_occupied = 0
-        
         for lot in lots:
-            available = len([s for s in lot.spots if s.status == 'A'])
-            occupied = len([s for s in lot.spots if s.status == 'O'])
-            total_available += available
-            total_occupied += occupied
-            
-            summary.append({
+            occupied = ParkingSpot.query.filter_by(lot_id=lot.id, status='O').count()
+            available = lot.number_of_spots - occupied
+            lot_summary.append({
                 "lot_name": lot.prime_location_name,
-                "available": available,
-                "occupied": occupied
+                "occupied": occupied,
+                "available": available
             })
-        
-        return jsonify({
-            "lot_summary": summary,
+
+        return {
             "totals": {
-                "available": total_available,
-                "occupied": total_occupied
-            }
-        })
+                "total_lots": total_lots,
+                "total_users": total_users,
+                "occupied": occupied_spots,
+                "available": available_spots
+            },
+            "lot_summary": lot_summary
+        }
 
 
+class UserSpotSummary(Resource):
+    @jwt_required()
+    def get(self):
+        user_id = get_jwt_identity()
 
+        total = Reservation.query.filter_by(user_id=user_id).count()
+        active = Reservation.query.filter_by(user_id=user_id, leaving_timestamp=None).count()
+        completed = total - active
+        total_spent = (
+        db.session.query(func.sum(Reservation.parking_cost))
+        .filter(Reservation.user_id == user_id)
+        .scalar()
+    ) or 0
 
-
-
-
-
-
-
-
-
+        return {
+            "active": active,
+            "completed": completed,
+            "total": total,
+            "total_spent": total_spent
+        }
 
 
 
@@ -582,6 +598,7 @@ api.add_resource(ReservationBySpotId, '/api/reservations/by_spot/<int:spot_id>')
 
 #chart.js
 api.add_resource(AdminSummary, '/api/admin/summary')
+api.add_resource(UserSpotSummary, '/api/user/summary')
 
 
 

@@ -40,7 +40,10 @@ import { RouterLink, RouterView } from 'vue-router'
                 <li class="nav-item">
                   <RouterLink class="nav-link" to="/user/dashboard">Dashboard</RouterLink>
                 </li>
-              </template>
+                <li class="nav-item">
+                  <RouterLink class="nav-link" to="/user/summary">My Summary</RouterLink>
+                </li>
+                </template>
 
               <!-- Common Links -->
               <li class="nav-item">

@@ -2,24 +2,45 @@
   <div class="container mt-4">
     <h3 class="text-center text-primary mb-4">Admin Summary Dashboard</h3>
 
-    <!-- Lot-wise Occupancy -->
+    <!-- Stat Cards -->
+    <div class="row mb-4">
+      <div class="col-md-4">
+        <div class="card shadow-sm p-3 text-center">
+          <h5>Total Parking Lots</h5>
+          <h3>{{ totalData.total_lots }}</h3>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card shadow-sm p-3 text-center">
+         <h5>Total Users</h5>
+        <h3>{{ totalData.total_users }}</h3>  
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card shadow-sm p-3 text-center">
+          <h5>Occupied Spots</h5>
+          <h3>{{ totalData.occupied }}</h3>
+        </div>
+      </div>
+    </div>
 
+    <!-- Lot-wise Occupancy -->
     <div class="card mb-4">
       <div class="card-header bg-light">
         <h5 class="mb-0">Parking Lot Occupancy</h5>
       </div>
-
-      <canvas id="lotChart"></canvas>
+      <div class="card-body">
+        <canvas id="lotChart"></canvas>
+      </div>
     </div>
 
     <!-- Overall Utilization -->
-
     <div class="card">
       <div class="card-header bg-light">
         <h5 class="mb-0">Overall Utilization</h5>
       </div>
       <div class="card-body d-flex justify-content-center">
-        <div style="width: 600px; height: 700px">
+        <div style="width: 600px; height: 650px">
           <canvas id="totalChart"></canvas>
         </div>
       </div>
@@ -33,8 +54,8 @@ import { Chart } from 'chart.js/auto'
 export default {
   data() {
     return {
-      chartData: null,
-      totalData: null,
+      chartData: [],
+      totalData: { total_lots: 0, total_spots: 0, occupied: 0, available: 0 },
     }
   },
   mounted() {
@@ -88,3 +109,9 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+.card {
+  border-radius: 10px;
+}
+</style>
