@@ -1,5 +1,8 @@
 <template>
   <div class="user-list">
+    <br />
+    <button class="btn btn-primary" @click="exportUsers">Export All Users (CSV)</button>
+    <p>{{ message }}</p>
     <h2>Registered Users</h2>
 
     <table class="table table-striped table-hover">
@@ -28,6 +31,7 @@ export default {
   data() {
     return {
       users: [],
+      message: '',
     }
   },
   async mounted() {
@@ -51,6 +55,18 @@ export default {
       } catch (error) {
         console.error('Error:', error)
         alert('Could not load users')
+      }
+    },
+    async exportUsers() {
+      try {
+        const res = await fetch('http://127.0.0.1:5000/api/admin/export-users', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        })
+        const data = await res.json()
+        this.message = data.message
+      } catch (err) {
+        this.message = 'Failed to trigger user export.'
       }
     },
   },

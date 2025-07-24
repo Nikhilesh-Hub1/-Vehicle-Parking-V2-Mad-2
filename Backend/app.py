@@ -1,15 +1,38 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask
 from flask_cors import CORS
-from flask_jwt_extended import JWTManager
+from config import init_app
+from extensions import db
+from models import User  # Importing models after db is initialized
 
-app = Flask(__name__)
-CORS(app)
+def create_app():
+    app = Flask(__name__)
+    CORS(app, resources={r"/*": {"origins": "*"}}, supports_credentials=True)
+    
+    # Initialize config
+    init_app(app)
+    
+    # Creating tables and admin user
+    with app.app_context():
+        db.create_all()
+        
+        admin = User.query.filter_by(email='admin@gmail.com').first()
+        if not admin:
+            admin = User(
+                name='admin',
+                email='admin@gmail.com',
+                password='admin', 
+                role='admin'
+            )
+            db.session.add(admin)
+            db.session.commit()
+            print("Admin user created")
 
-import config
-import models
+    return app
 
+app = create_app()
 
-import controllers 
+from controllers import *
 
-#pushing app to work outside app context
-app.app_context().push()
+if __name__ == '__main__':
+    app.run(debug=True)
+

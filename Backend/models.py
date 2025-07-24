@@ -1,8 +1,4 @@
-from flask_sqlalchemy import SQLAlchemy
-from app import app
-
-db = SQLAlchemy()
-db.init_app(app)
+from extensions import db
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -40,7 +36,7 @@ class ParkingLot(db.Model):
         # Sort spots by ID 
         sorted_spots = sorted(self.spots, key=lambda s: s.id)
 
-        # Create 2D grid (3 columns per row for example)
+        # Creating 2D grid (3 columns per row for example)
         grid = []
         row = []
         for i, spot in enumerate(sorted_spots):
@@ -56,9 +52,6 @@ class ParkingLot(db.Model):
             grid.append(row)
 
 
-
-
-
         return {
             "id": self.id,
             "prime_location_name": self.prime_location_name,
@@ -69,14 +62,6 @@ class ParkingLot(db.Model):
             "available_spots": available_spots,
             "grid": grid
         }
-
-
-
-
-
-
-
-
 
 
 
@@ -129,13 +114,3 @@ class Reservation(db.Model):
 
 
 
-with app.app_context():
-    db.create_all()
-
-
-    admin = User.query.filter_by(email = 'admin@gmail.com').first()
-    if not admin :
-        admin = User(name='admin',email = 'admin@gmail.com',password = 'admin', role = 'admin')
-        db.session.add(admin)
-        db.session.commit()
-        print("Admin user created with email:", "admin@gmail.com", "and password:", "admin")

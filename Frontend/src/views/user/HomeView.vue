@@ -38,6 +38,11 @@
     </div>
 
     <!-- Recent Parking History -->
+   <div class="container mt-4">
+    <h3>Export My Parking Data</h3>
+    <button class="btn btn-primary" @click="exportData">Export Reservations</button>
+    <p class="mt-2 text-success">{{ message }}</p>
+  </div>
     <div class="card mb-4">
       <div class="card-header bg-light"><strong>Recent Parking History</strong></div>
       <div class="card-body p-0">
@@ -176,6 +181,7 @@ export default {
       releaseData: {},
       showViewModal: false,
       viewData: {},
+      message: "" ,
     }
   },
   computed: {
@@ -275,6 +281,28 @@ export default {
       this.viewData = reservation
       this.showViewModal = true
     },
+    async exportData() {
+  try {
+    const res = await fetch('http://127.0.0.1:5000/api/user/export-reservations', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
+    });
+
+    // Check if response is JSON
+    const contentType = res.headers.get("content-type");
+    if (contentType && contentType.includes("application/json")) {
+      const data = await res.json();
+      this.message = data.message;
+    } else {
+      this.message = "Export triggered successfully!";
+    }
+
+  } catch (err) {
+    this.message = "Failed to trigger export.";
+  }
+}
+
+    
   },
 }
 </script>

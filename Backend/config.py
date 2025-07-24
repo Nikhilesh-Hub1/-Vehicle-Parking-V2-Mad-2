@@ -1,18 +1,20 @@
-from dotenv import load_dotenv 
-from os import getenv
-from flask_jwt_extended import JWTManager
-
-
-from app import app
+from dotenv import load_dotenv
 import os
+from extensions import db, jwt
+
 load_dotenv()
 
-#database config
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS')
-app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+def init_app(app):
+   
+    # Database configuration
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False') == 'True'
+    app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 
-#jwt config
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')  
-app.config['JWT_VERIFY_SUB'] = False  
-jwt = JWTManager(app)
+    # JWT Configuration
+    app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY')
+    app.config['JWT_VERIFY_SUB'] = False
+
+    # Initializing extensions
+    db.init_app(app)
+    jwt.init_app(app)

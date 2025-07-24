@@ -10,9 +10,12 @@ SMTP_PORT = 1025
 FROM_EMAIL = "notifications@parkingapp.com"
 IST = pytz.timezone('Asia/Kolkata')
 
-def send_email(to_email, subject, body):
+def send_email(to_email, subject, body, html=False):
     msg = EmailMessage()
-    msg.set_content(body)
+    if html:
+        msg.add_alternative(body, subtype='html')
+    else:
+        msg.set_content(body)
     msg["Subject"] = subject
     msg["From"] = FROM_EMAIL
     msg["To"] = to_email
@@ -20,31 +23,8 @@ def send_email(to_email, subject, body):
     try:
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             server.send_message(msg)
-        print(f"Email sent to {to_email} at {datetime.now(IST).strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"[{datetime.now(IST).strftime('%Y-%m-%d %H:%M:%S')}] Email sent to {to_email}")
     except Exception as e:
-        print(f"Failed to send email: {str(e)}")
+        print(f"Failed to send email to {to_email}: {str(e)}")
+        raise
 
-def daily_reminder_template(user):
-    return f"""
-Hello {user['name']},
-
-🚗 Parking Reminder ({datetime.now(IST).strftime('%d %b %Y')})
-
-Active Session: {'Yes' if user.get('has_active_session') else 'No'}
-Available Spaces: Main Lot ({user.get('spaces',{}).get('main',0)}), West Garage ({user.get('spaces',{}).get('west',0)})
-
-ParkingApp Team
-"""
-
-def monthly_summary_template(user):
-    return f"""
-Hello {user['name']},
-
-📊 Monthly Report ({datetime.now(IST).strftime('%B %Y')})
-
-Sessions: {user.get('total_sessions',0)}
-Hours Parked: {user.get('total_hours',0):.1f}
-Total Charges: ₹{user.get('amount_spent',0):.2f}
-
-ParkingApp Team
-"""

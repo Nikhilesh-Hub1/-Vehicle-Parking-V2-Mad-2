@@ -8,6 +8,9 @@ from app import app
 from sqlalchemy import func
 
 
+import os
+
+
 
 
 
@@ -576,6 +579,32 @@ class UserSpotSummary(Resource):
         }
 
 
+#---------------------------------------TASK'S API'S---------------------------------------
+
+class ExportReservations(Resource):
+    @jwt_required()
+    def post(self):
+        from tasks import export_reservations_csv
+        user_id = get_jwt_identity()
+        export_reservations_csv.delay(user_id)
+        return {"message": "Your data export has started. You’ll receive an email when it's ready."}, 202
+
+
+
+class ExportUsers(Resource):
+    @admin_required
+    def post(self):
+        from tasks import export_all_users_csv
+        admin_id = get_jwt_identity()
+        export_all_users_csv.delay(admin_id)
+        return {"message": "User data export has started. You’ll receive an email when it's ready."}, 202
+
+from flask import send_from_directory
+
+@app.route('/download/<filename>')
+def download_file(filename):
+    return send_from_directory(os.path.join(os.getcwd(), "exports"), filename, as_attachment=True)
+
 
 #---------------------------------------APP SETUP---------------------------------------
 
@@ -600,6 +629,9 @@ api.add_resource(ReservationBySpotId, '/api/reservations/by_spot/<int:spot_id>')
 api.add_resource(AdminSummary, '/api/admin/summary')
 api.add_resource(UserSpotSummary, '/api/user/summary')
 
+
+api.add_resource(ExportReservations, '/api/user/export-reservations')
+api.add_resource(ExportUsers, '/api/admin/export-users')
 
 
 
