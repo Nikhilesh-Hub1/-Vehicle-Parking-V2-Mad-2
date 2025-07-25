@@ -1,34 +1,58 @@
 <template>
-  <div v-if="islogin">
-    <h2>Login</h2>
-    <form @submit.prevent="loginUser">
-      <label for="email">Email:</label>
-      <input type="email" id="email" name="email" v-model="email" required />
-      <br />
-      <label for="password">Password:</label>
-      <input type="password" id="password" name="password" v-model="password" required />
-      <br />
-      <input type="submit" value="Login" />
-    </form>
-    <p>Don't have an account? <button type="button" @click="toggleLogin">Register here</button></p>
-    <p style="color: red">{{ message }}</p>
-  </div>
-  <div v-else>
-    <form @submit.prevent="registerUser">
-      <h2>Register</h2>
-      <label for="name">Name:</label>
-      <input type="text" id="name" name="name" v-model="name" required />
-      <br />
-      <label for="reg-email">Email:</label>
-      <input type="email" id="reg-email" name="email" v-model="email" required />
-      <br />
-      <label for="reg-password">Password:</label>
-      <input type="password" id="reg-password" name="password" v-model="password" required />
-      <br />
-      <input type="submit" value="Register" />
-    </form>
-    <p>Already have an account? <button type="button" @click="toggleLogin">Login</button></p>
-    <p style="color: red">{{ message }}</p>
+  <div class="container mt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-5">
+        <div class="card shadow-lg border-0 rounded-4">
+          <div class="card-body">
+            <h2 class="text-center mb-4">{{ islogin ? 'Login' : 'Register' }}</h2>
+
+            <form @submit.prevent="islogin ? loginUser() : registerUser()">
+              <div v-if="!islogin" class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <input type="text" id="name" class="form-control" v-model="name" required />
+              </div>
+
+              <div class="mb-3">
+                <label :for="islogin ? 'email' : 'reg-email'" class="form-label">Email</label>
+                <input
+                  type="email"
+                  :id="islogin ? 'email' : 'reg-email'"
+                  class="form-control"
+                  v-model="email"
+                  required
+                />
+              </div>
+
+              <div class="mb-3">
+                <label :for="islogin ? 'password' : 'reg-password'" class="form-label"
+                  >Password</label
+                >
+                <input
+                  type="password"
+                  :id="islogin ? 'password' : 'reg-password'"
+                  class="form-control"
+                  v-model="password"
+                  required
+                />
+              </div>
+
+              <button type="submit" class="btn btn-primary w-100 mb-3">
+                {{ islogin ? 'Login' : 'Register' }}
+              </button>
+            </form>
+
+            <p class="text-center">
+              {{ islogin ? "Don't have an account?" : 'Already have an account?' }}
+              <button type="button" class="btn btn-link p-0" @click="toggleLogin">
+                {{ islogin ? 'Register here' : 'Login' }}
+              </button>
+            </p>
+
+            <p class="text-danger text-center">{{ message }}</p>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -53,19 +77,13 @@ export default {
       try {
         const response = await fetch('http://127.0.0.1:5000/api/login', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            email: this.email,
-            password: this.password,
-          }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: this.email, password: this.password }),
         })
 
         if (response.ok) {
           const data = await response.json()
           this.message = data.message || 'Login successful'
-          console.log('Login successful:', data)
           localStorage.setItem('token', data.access_token)
           localStorage.setItem('user', JSON.stringify(data.user))
 
@@ -78,21 +96,16 @@ export default {
         } else {
           const errorData = await response.json()
           this.message = errorData.message || 'Login failed'
-          console.error('Login failed:', response)
         }
       } catch (error) {
         this.message = 'Network error. Please try again.'
-        console.error('Fetch error:', error)
       }
     },
-
     async registerUser() {
       try {
         const response = await fetch('http://127.0.0.1:5000/api/register', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: this.name,
             email: this.email,
@@ -103,44 +116,18 @@ export default {
         if (response.ok) {
           const data = await response.json()
           this.message = data.message || 'Registration successful'
-          console.log('Registration successful:', data)
           alert('Registration successful! Please log in to continue.')
-
           this.islogin = true
           this.email = ''
           this.password = ''
         } else {
           const errorData = await response.json()
           this.message = errorData.message || 'Registration failed'
-          console.error('Registration failed:', response)
         }
       } catch (error) {
         this.message = 'Network error. Please try again.'
-        console.error('Fetch error:', error)
       }
     },
   },
 }
 </script>
-
-<style scoped>
-form {
-  display: flex;
-  flex-direction: column;
-  width: 300px;
-  margin: 0 auto;
-  padding: 20px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  align-items: center;
-}
-label,
-input {
-  margin: 5px 0;
-}
-h2,
-p {
-  margin-bottom: 20px;
-  text-align: center;
-}
-</style>

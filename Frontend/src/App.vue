@@ -7,22 +7,19 @@ import { RouterLink, RouterView } from 'vue-router'
     <div class="wrapper">
       <nav class="navbar navbar-expand-lg navbar-light" style="background-color: #e3f2fd">
         <div class="container-fluid">
-          <!-- Logo -->
           <RouterLink class="navbar-brand" to="/about">
             <img
               alt="logo"
-              src="@/assets/logo.svg"
+              src="/logo.png"
               width="30"
               height="30"
               class="d-inline-block align-top"
             />
-            <b style="color: green">Vehicle Parking</b>
+            <b style="color: lightseagreen">Vehicle Parking</b>
           </RouterLink>
 
-          <!-- Links -->
           <div class="collapse navbar-collapse" id="navbarNav">
             <ul class="navbar-nav ms-auto">
-              <!-- Admin Links -->
               <template v-if="isAdmin && isLoggedIn">
                 <li class="nav-item">
                   <RouterLink class="nav-link" to="/admin">Admin Dashboard</RouterLink>
@@ -35,7 +32,6 @@ import { RouterLink, RouterView } from 'vue-router'
                 </li>
               </template>
 
-              <!-- User Links -->
               <template v-else-if="isLoggedIn">
                 <li class="nav-item">
                   <RouterLink class="nav-link" to="/user/dashboard">Dashboard</RouterLink>
@@ -43,12 +39,7 @@ import { RouterLink, RouterView } from 'vue-router'
                 <li class="nav-item">
                   <RouterLink class="nav-link" to="/user/summary">My Summary</RouterLink>
                 </li>
-                </template>
-
-              <!-- Common Links -->
-              <li class="nav-item">
-                <RouterLink class="nav-link" to="/about">About</RouterLink>
-              </li>
+              </template>
 
               <li class="nav-item" v-if="!isLoggedIn">
                 <RouterLink class="nav-link" to="/in">Login/Register</RouterLink>
