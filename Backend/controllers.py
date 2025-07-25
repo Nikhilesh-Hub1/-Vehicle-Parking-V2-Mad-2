@@ -6,9 +6,10 @@ from functools import wraps
 from datetime import datetime,timedelta
 from app import app
 from sqlalchemy import func
-
-
+import time
 import os
+from extensions import cache
+
 
 
 
@@ -139,7 +140,8 @@ class Login(Resource):
 
 class ParkingLotsAPI(Resource):
     @jwt_required()
-    
+    # @cache.cached(timeout=60, key_prefix='parking_lots')
+
     def get(self, lot_id=None):
         if lot_id:
             lot = ParkingLot.query.get(lot_id)
@@ -147,6 +149,7 @@ class ParkingLotsAPI(Resource):
                 return {"message": "Parking Lot not found"}, 404
             return {"message": "Parking Lot fetched successfully", "lot": lot.to_dict()}, 200
         else:
+            # time.sleep(5)  # delay for testing caching
             lots = ParkingLot.query.all()
             return jsonify({'message': 'Parking Lots fetched successfully', 'lots': [lot.to_dict() for lot in lots]})
     @admin_required
@@ -162,10 +165,12 @@ class ParkingLotsAPI(Resource):
             )
             db.session.add(new_lot)
             db.session.commit()
+            cache.delete("parking_lots")  # Clear cache after adding a new lot
             for _ in range(new_lot.number_of_spots):
                 spot = ParkingSpot(status='A', lot_id=new_lot.id)
                 db.session.add(spot)
                 db.session.commit()
+                cache.delete("parking_lots")  # Clear cache after adding each spot
             return {"message": "Parking Lot created successfully", "lot": new_lot.to_dict()}, 201
         except Exception as e:
             db.session.rollback()
@@ -175,6 +180,7 @@ class ParkingLotsAPI(Resource):
             db.session.close()
 
     @admin_required
+    
     def put(self, lot_id):
         try:
             lot = ParkingLot.query.get(lot_id)
@@ -211,11 +217,15 @@ class ParkingLotsAPI(Resource):
 
                 for spot in removable_spots[:spots_to_remove]:
                     db.session.delete(spot)
+                  
 
             # Update the spot count in the lot
             lot.number_of_spots = new_spot_count
-
+            
             db.session.commit()
+            cache.delete("parking_lots")  # Clear the list cache
+            cache.delete(f"parking_lot_{lot_id}")  # Clear this specific lot's cache
+
             return {"message": "Parking Lot updated successfully", "lot": lot.to_dict()}, 200
 
         except Exception as e:
@@ -236,6 +246,7 @@ class ParkingLotsAPI(Resource):
             
             db.session.delete(lot)
             db.session.commit()
+            cache.delete("parking_lots")  # Clear cache after deleting the lot
             return {"message": "Parking Lot deleted successfully"}, 200
         except Exception as e:
             db.session.rollback()
@@ -248,7 +259,9 @@ class ParkingLotsAPI(Resource):
 #---------------------------------------PARKING SPOT CONTROLLERS---------------------------------------
 
 class ParkingSpotsAPI(Resource):
+    
     @jwt_required()
+    @cache.cached(timeout=60, key_prefix='parking_spots')
     def get(self, spot_id=None):
         if spot_id:
             spot = ParkingSpot.query.get(spot_id)
@@ -277,6 +290,7 @@ class ParkingSpotsAPI(Resource):
                 }, 400
             db.session.add(new_spot)
             db.session.commit()
+            cache.clear()  # Clear cache after adding a new spot
             return {"message": "Parking Spot created successfully", "spot": new_spot.to_dict()}, 201
         except Exception as e:
             db.session.rollback()
@@ -296,6 +310,7 @@ class ParkingSpotsAPI(Resource):
             spot.lot_id = data['lot_id']
             spot.status = data.get('status', spot.status)  
             db.session.commit()
+            cache.clear()  # Clear cache after updating the spot
             return {"message": "Parking Spot updated successfully", "spot": spot.to_dict()}, 200
         except Exception as e:
             db.session.rollback()
@@ -312,6 +327,7 @@ class ParkingSpotsAPI(Resource):
             
             db.session.delete(spot)
             db.session.commit()
+            cache.clear()  # Clear cache after deleting the spot
             return {"message": "Parking Spot deleted successfully"}, 200
         except Exception as e:
             db.session.rollback()
@@ -585,6 +601,7 @@ class ExportReservations(Resource):
     @jwt_required()
     def post(self):
         from tasks import export_reservations_csv
+        
         user_id = get_jwt_identity()
         export_reservations_csv.delay(user_id)
         return {"message": "Your data export has started. You’ll receive an email when it's ready."}, 202

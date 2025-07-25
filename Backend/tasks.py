@@ -9,6 +9,7 @@ from io import StringIO
 import pytz
 from app import create_app 
 import os
+from time import sleep
 
 
 # Initialize Celery
@@ -102,7 +103,7 @@ def send_monthly_reports(end_date=None):
                 )
                 .all()
             )
-
+        
             if not reservations:
                 continue  # Skip users with no activity
 
@@ -178,7 +179,9 @@ def export_reservations_csv(user_id):
 
         # Generate download link
         download_url = f"http://127.0.0.1:5000/download/{filename}"
-
+        for i in range (5):
+            sleep(2)
+            print(f"Exporting CSV....{i+1}/5")
         # Send email with link
         send_email(
             user.email,
@@ -235,6 +238,9 @@ def export_all_users_csv(admin_id):
         <a href="{download_url}">Click here to download</a><br><br>
         ParkingApp Team
         """
+        for i in range (5):
+            sleep(2)
+            print(f"Exporting CSV....{i+1}/5")
         send_email(admin.email, "User Data Export Ready", body, html=True)
         return filepath
 
@@ -244,11 +250,11 @@ def export_all_users_csv(admin_id):
 app.conf.beat_schedule = {
     'daily-reminder': {
         'task': 'tasks.send_daily_reminders',
-        'schedule': crontab(hour=20, minute=4),  # 8:00 AM IST daily
+        'schedule': crontab(hour=12, minute=5),  # 8:00 AM IST daily
     },
     'monthly-summary': {
         'task': 'tasks.send_monthly_reports',
-        'schedule': crontab(day_of_month=24, hour=20, minute=5),
+        'schedule': crontab(day_of_month=25, hour=12, minute=6),
         'args': (datetime.utcnow().strftime("%Y-%m-%d"),)  
     },
 }
